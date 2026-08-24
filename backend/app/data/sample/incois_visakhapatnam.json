@@ -1,0 +1,33 @@
+{
+  "location": "Visakhapatnam",
+  "state": "Andhra Pradesh",
+  "coordinates": {
+    "latitude": 17.6868,
+    "longitude": 83.2185
+  },
+  "source": "INCOIS Ocean State Forecast (OSF)",
+  "data_quality": "DEMO SNAPSHOT",
+  "timestamp": "2026-08-24T12:00:00+05:30",
+  "parameters": {
+    "significant_wave_height_m": 1.4,
+    "wave_period_s": 8.2,
+    "wave_direction_deg": 140,
+    "swell_height_m": 1.1,
+    "swell_period_s": 11.5,
+    "swell_direction_deg": 160,
+    "surface_current_speed_ms": 0.42,
+    "surface_current_direction_deg": 45,
+    "sea_surface_temperature_c": 29.4,
+    "mixed_layer_depth_m": 24.5,
+    "chlorophyll_mg_m3": 0.85
+  },
+  "forecast_24h": [
+    {"hour": "06:00", "wave_height_m": 1.2, "swell_m": 0.9, "sst_c": 29.1, "current_ms": 0.38},
+    {"hour": "09:00", "wave_height_m": 1.3, "swell_m": 1.0, "sst_c": 29.3, "current_ms": 0.40},
+    {"hour": "12:00", "wave_height_m": 1.4, "swell_m": 1.1, "sst_c": 29.6, "current_ms": 0.42},
+    {"hour": "15:00", "wave_height_m": 1.6, "swell_m": 1.2, "sst_c": 29.5, "current_ms": 0.45},
+    {"hour": "18:00", "wave_height_m": 1.5, "swell_m": 1.1, "sst_c": 29.2, "current_ms": 0.41},
+    {"hour": "21:00", "wave_height_m": 1.3, "swell_m": 1.0, "sst_c": 29.0, "current_ms": 0.39}
+  ],
+  "disclaimer": "Prototype ocean dataset snapshot based on INCOIS OSF telemetry formats."
+}

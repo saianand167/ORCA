@@ -1,0 +1,41 @@
+# Configurable Prototype Marine Risk Thresholds
+# Model: ORCA Prototype Risk Assessment Model v1.0
+
+wind_speed_ms:
+  low_max: 5.5       # < 11 knots - gentle breeze
+  moderate_max: 9.0  # 11 - 17 knots - moderate breeze
+  high_max: 13.5     # 18 - 26 knots - strong breeze
+  # > 13.5 m/s is VERY HIGH / Gale
+
+wave_height_m:
+  low_max: 1.25      # Calm to Slight
+  moderate_max: 2.0  # Moderate
+  high_max: 3.5      # Rough / High
+  # > 3.5 m is VERY HIGH / Very Rough to High
+
+swell_height_m:
+  low_max: 1.0
+  moderate_max: 1.8
+  high_max: 2.8
+
+current_speed_ms:
+  low_max: 0.5
+  moderate_max: 1.0
+  high_max: 1.8
+
+user_type_modifiers:
+  fisherman:
+    wave_weight: 0.35
+    wind_weight: 0.30
+    warning_weight: 0.25
+    current_weight: 0.10
+  ocean_researcher:
+    wave_weight: 0.30
+    wind_weight: 0.25
+    warning_weight: 0.30
+    current_weight: 0.15
+  ship_operator:
+    wave_weight: 0.30
+    wind_weight: 0.35
+    warning_weight: 0.25
+    current_weight: 0.10

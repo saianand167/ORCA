@@ -1,0 +1,64 @@
+{
+  "available": true,
+  "source": "INCOIS Marine Fisheries Advisory (PFZ)",
+  "data_quality": "DEMO SNAPSHOT",
+  "advisory_date": "2026-08-24",
+  "valid_until": "2026-08-26",
+  "region": "Andhra Pradesh Coast",
+  "landing_centre": "Visakhapatnam Fishing Harbour",
+  "landing_centre_coords": {
+    "latitude": 17.6974,
+    "longitude": 83.3005
+  },
+  "locations": [
+    {
+      "id": "PFZ-AP-VIZ-01",
+      "sector": "East-South-East (ESE)",
+      "direction_bearing_deg": 115,
+      "distance_km": 28.4,
+      "distance_nm": 15.3,
+      "depth_m": "45 - 65",
+      "latitude": 17.5812,
+      "longitude": 83.4560,
+      "sst_range_c": "28.5 - 29.2",
+      "chlorophyll_gradient": "Moderate to High (0.75 - 1.2 mg/m³)",
+      "feature": "Thermal Front & Chlorophyll Bloom Boundary",
+      "fish_species_likely": ["Tuna", "Mackerel", "Sardinella", "Carangids"],
+      "recommended_gear": "Gillnet / Ring Seine / Line",
+      "safety_note": "Favorable sea state within 20 nautical miles"
+    },
+    {
+      "id": "PFZ-AP-VIZ-02",
+      "sector": "South-East (SE)",
+      "direction_bearing_deg": 140,
+      "distance_km": 46.2,
+      "distance_nm": 24.9,
+      "depth_m": "70 - 110",
+      "latitude": 17.3750,
+      "longitude": 83.4980,
+      "sst_range_c": "28.8 - 29.4",
+      "chlorophyll_gradient": "High (1.1 - 1.8 mg/m³)",
+      "feature": "Oceanic Eddy Edge / Shelf Break Upwelling",
+      "fish_species_likely": ["Skipjack Tuna", "Ribbonfish", "Seerfish"],
+      "recommended_gear": "Trolling line / Trawl",
+      "safety_note": "Monitor offshore swell beyond 20nm"
+    },
+    {
+      "id": "PFZ-AP-VIZ-03",
+      "sector": "North-East (NE)",
+      "direction_bearing_deg": 55,
+      "distance_km": 34.8,
+      "distance_nm": 18.8,
+      "depth_m": "35 - 55",
+      "latitude": 17.8650,
+      "longitude": 83.4880,
+      "sst_range_c": "28.4 - 28.9",
+      "chlorophyll_gradient": "Moderate (0.6 - 0.9 mg/m³)",
+      "feature": "Coastal Coastal Divergence Zone",
+      "fish_species_likely": ["Anchovy", "Croakers", "Pompano"],
+      "recommended_gear": "Drift Gillnet",
+      "safety_note": "Calm coastal corridor"
+    }
+  ],
+  "disclaimer": "Potential Fishing Zones (PFZ) advisory derived from satellite chlorophyll (Ocean Colour Monitor) and SST thermal gradients."
+}

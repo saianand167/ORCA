@@ -1,0 +1,33 @@
+{
+  "location": "Visakhapatnam",
+  "state": "Andhra Pradesh",
+  "source": "India Meteorological Department (IMD)",
+  "data_quality": "DEMO SNAPSHOT",
+  "timestamp": "2026-08-24T12:00:00+05:30",
+  "bulletin_type": "Coastal Weather Bulletin & Fishermen Warning",
+  "temperature_c": 31.2,
+  "humidity_percent": 76,
+  "rainfall_mm": 0.0,
+  "condition": "Partly Cloudy",
+  "wind_speed_kmh": 18.5,
+  "wind_speed_ms": 5.14,
+  "wind_speed_knots": 10.0,
+  "wind_direction": "South-Easterly (SE)",
+  "wind_direction_deg": 135,
+  "visibility_km": 9.0,
+  "warnings": [
+    {
+      "id": "IMD-WARN-AP-01",
+      "category": "Fishermen Warning",
+      "severity": "MODERATE",
+      "headline": "Squally weather with wind speed 40-50 kmph gusting to 60 kmph likely over Westcentral Bay of Bengal",
+      "description": "Fishermen are advised not to venture into deep sea areas along and off North Andhra Pradesh coast during the next 24 hours.",
+      "affected_areas": ["North Andhra Coast", "Visakhapatnam offshore", "Kakinada coast"],
+      "color_code": "YELLOW",
+      "issued_at": "2026-08-24T08:30:00+05:30",
+      "valid_until": "2026-08-25T18:00:00+05:30",
+      "source": "IMD Cyclone Warning Centre (CWC) Visakhapatnam"
+    }
+  ],
+  "disclaimer": "Sample bulletin captured in accordance with IMD National Marine Weather Warning standards."
+}
