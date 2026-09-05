@@ -153,10 +153,11 @@ export const MarineMap: React.FC<MarineMapProps> = ({
       >
         <MapRecenter lat={centerLat} lon={centerLon} />
 
-        {/* Clean Voyager Basemap Tile Layer */}
+        {/* OpenStreetMap Basemap Tile Layer */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={18}
         />
 
         {/* User Port Location Marker */}
