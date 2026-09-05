@@ -124,13 +124,37 @@ CRITICAL CONSTRAINTS:
                     "content": f"User question: '{user_message}'\n\nVerified Ground Truth Telemetry Facts:\n{json.dumps(facts, indent=2)}"
                 })
 
-                completion = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=chat_messages,
-                    temperature=0.2,
-                    max_tokens=700
-                )
-                explanation_text = completion.choices[0].message.content
+                candidate_models = [
+                    "groq/compound-mini",
+                    "qwen/qwen3.8-27b",
+                    "groq/compound",
+                    "openai/gpt-oss-120b",
+                    "llama-3.3-70b-versatile",
+                    "llama-3.1-8b-instant"
+                ]
+                completion = None
+                chosen_model = None
+                for candidate in candidate_models:
+                    try:
+                        completion = client.chat.completions.create(
+                            model=candidate,
+                            messages=chat_messages,
+                            temperature=0.2,
+                            max_tokens=700
+                        )
+                        chosen_model = candidate
+                        break
+                    except Exception:
+                        continue
+
+                if completion and completion.choices:
+                    explanation_text = completion.choices[0].message.content
+                    llm_used = f"Groq ({chosen_model})"
+                else:
+                    explanation_text = ExplanationAgent._generate_deterministic_explanation(
+                        user_message, user_type, location_name, language, risk, weather, ocean, pfz, warnings, gis_alerts, tide_info
+                    )
+                    llm_used = "Deterministic Reasoning Engine (Fallback)"
             except Exception:
                 explanation_text = ExplanationAgent._generate_deterministic_explanation(
                     user_message, user_type, location_name, language, risk, weather, ocean, pfz, warnings, gis_alerts, tide_info
