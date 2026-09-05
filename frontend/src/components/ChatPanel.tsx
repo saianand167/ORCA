@@ -7,7 +7,7 @@ import {
   RotateCcw,
   Waves,
   Fish,
-  Radio
+  Cpu
 } from 'lucide-react';
 import { ChatMessage, LocationInfo, UserRole } from '../types';
 import { AgentActivity } from './AgentActivity';
@@ -21,6 +21,14 @@ interface ChatPanelProps {
   onResetChat?: () => void;
 }
 
+const AGENT_STAGES = [
+  { agent: 'Planner Agent', desc: 'Resolving query intent & marine geo-coordinates...', icon: '🧭' },
+  { agent: 'Weather & Ocean Agents', desc: 'Ingesting live Open-Meteo & ECMWF marine telemetry...', icon: '🌊' },
+  { agent: 'PFZ & GIS Agents', desc: 'Computing Haversine bearings & MPA geofences...', icon: '🐟' },
+  { agent: 'Deterministic Risk Engine', desc: 'Evaluating multi-factor marine safety index...', icon: '🛡️' },
+  { agent: 'Explanation Agent', desc: 'Synthesizing grounded multi-lingual advisory...', icon: '🤖' },
+];
+
 export const ChatPanel: React.FC<ChatPanelProps> = ({
   location,
   userRole,
@@ -30,6 +38,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   onResetChat
 }) => {
   const [inputText, setInputText] = useState('');
+  const [activeStageIdx, setActiveStageIdx] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -38,7 +47,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, activeStageIdx]);
+
+  // Cycle through live agent stages while waiting for response
+  useEffect(() => {
+    if (!isLoading) {
+      setActiveStageIdx(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setActiveStageIdx((prev) => (prev < AGENT_STAGES.length - 1 ? prev + 1 : prev));
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +80,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-slate-800">Ask ORCA Marine Assistant</h3>
               <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
-                Agentic AI
+                Multi-Agent AI
               </span>
             </div>
             <p className="text-xs text-slate-500">
@@ -71,7 +92,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         {onResetChat && (
           <button
             onClick={onResetChat}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-full font-semibold transition"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-full font-semibold transition cursor-pointer"
             title="Reset conversation"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -171,15 +192,43 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           );
         })}
 
-        {/* Live Loading Indicator */}
+        {/* Live Multi-Agent Execution Progress Card */}
         {isLoading && (
-          <div className="flex gap-3 justify-start items-center">
-            <div className="w-9 h-9 rounded-2xl bg-teal-500 text-white shrink-0 flex items-center justify-center shadow-md animate-pulse">
+          <div className="flex gap-3 justify-start items-start">
+            <div className="w-9 h-9 rounded-2xl bg-teal-500 text-white shrink-0 flex items-center justify-center shadow-md animate-pulse mt-1">
               <Bot className="w-4 h-4" />
             </div>
-            <div className="p-4 rounded-2xl rounded-tl-none bg-white border border-slate-200 text-xs text-slate-600 flex items-center gap-2.5 shadow-md">
-              <Radio className="w-4 h-4 text-teal-600 animate-spin" />
-              <span className="font-semibold">Collaborative Agents Analyzing Marine Telemetry...</span>
+            <div className="p-4 rounded-2xl rounded-tl-none bg-white border border-teal-200 text-xs text-slate-700 shadow-lg max-w-[85%] sm:max-w-[70%] space-y-3">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                <span className="font-extrabold text-teal-800 flex items-center gap-1.5">
+                  <Cpu className="w-4 h-4 text-teal-600 animate-spin" />
+                  ORCA Multi-Agent Orchestrator Active
+                </span>
+                <span className="text-[10px] bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-bold">
+                  Step {activeStageIdx + 1} of {AGENT_STAGES.length}
+                </span>
+              </div>
+
+              {/* Active Step Highlight */}
+              <div className="p-2.5 rounded-xl bg-teal-50/70 border border-teal-100 flex items-center gap-3">
+                <span className="text-xl">{AGENT_STAGES[activeStageIdx].icon}</span>
+                <div>
+                  <div className="font-bold text-teal-900 text-[11px]">
+                    {AGENT_STAGES[activeStageIdx].agent}
+                  </div>
+                  <div className="text-[11px] text-slate-600">
+                    {AGENT_STAGES[activeStageIdx].desc}
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                <div 
+                  className="bg-teal-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${((activeStageIdx + 1) / AGENT_STAGES.length) * 100}%` }}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -200,7 +249,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         <button
           type="submit"
           disabled={!inputText.trim() || isLoading}
-          className="p-3 bg-teal-500 hover:bg-teal-600 text-white rounded-full font-medium disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-teal-500/25 transition flex items-center justify-center shrink-0"
+          className="p-3 bg-teal-500 hover:bg-teal-600 text-white rounded-full font-medium disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-teal-500/25 transition flex items-center justify-center shrink-0 cursor-pointer"
         >
           <Send className="w-4 h-4" />
         </button>

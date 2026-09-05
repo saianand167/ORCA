@@ -1,7 +1,10 @@
-from typing import Dict, Any, List, TypedDict
+from typing import Dict, Any, List, Optional
+from typing_extensions import TypedDict
+from langgraph.graph import StateGraph, START, END
+
 from ..core.models import (
     UserType, WeatherData, OceanData, PFZData, MarineWarning,
-    RiskAssessment, AgentEvent, ChatResponse
+    RiskAssessment, AgentEvent, ChatResponse, LocationInfo
 )
 from ..agents.planner import PlannerAgent
 from ..agents.weather_agent import WeatherAgent
@@ -12,15 +15,20 @@ from ..agents.risk_agent import RiskAgent
 from ..agents.explanation_agent import ExplanationAgent
 from ..database.database import get_conversation_history, save_chat_turn
 
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
     message: str
     user_type: UserType
     location_id: str
-    latitude: float
-    longitude: float
+    location_info: LocationInfo
+    target_lat: float
+    target_lon: float
+    loc_name: str
     conversation_id: str
     language: str
+    intent: str
     required_agents: List[str]
+    plan_summary: str
+    history: List[Dict[str, Any]]
     weather: WeatherData
     ocean: OceanData
     pfz: PFZData
@@ -30,8 +38,153 @@ class AgentState(TypedDict):
     answer: str
     agent_activity: List[AgentEvent]
 
+# --- LangGraph Node Functions ---
+
+def planner_node(state: AgentState) -> Dict[str, Any]:
+    history = state.get("history", [])
+    plan_res = PlannerAgent.plan(
+        state["message"],
+        state["user_type"],
+        state.get("location_id", "visakhapatnam"),
+        history
+    )
+    loc_info = plan_res["location_info"]
+    current_activity = list(state.get("agent_activity", []))
+    current_activity.append(plan_res["event"])
+    
+    return {
+        "location_info": loc_info,
+        "target_lat": loc_info.coordinates.latitude,
+        "target_lon": loc_info.coordinates.longitude,
+        "loc_name": loc_info.name,
+        "intent": plan_res["intent"],
+        "required_agents": plan_res["required_agents"],
+        "language": plan_res["language"],
+        "plan_summary": plan_res.get("plan_summary", ""),
+        "agent_activity": current_activity
+    }
+
+async def weather_node(state: AgentState) -> Dict[str, Any]:
+    weather_res = await WeatherAgent.execute(
+        state["target_lat"],
+        state["target_lon"],
+        state["loc_name"]
+    )
+    current_activity = list(state.get("agent_activity", []))
+    current_activity.append(weather_res["event"])
+    return {
+        "weather": weather_res["weather"],
+        "warnings": weather_res["warnings"],
+        "agent_activity": current_activity
+    }
+
+async def ocean_node(state: AgentState) -> Dict[str, Any]:
+    ocean_res = await OceanAgent.execute(
+        state["target_lat"],
+        state["target_lon"],
+        state["loc_name"]
+    )
+    current_activity = list(state.get("agent_activity", []))
+    current_activity.append(ocean_res["event"])
+    return {
+        "ocean": ocean_res["ocean"],
+        "agent_activity": current_activity
+    }
+
+async def pfz_node(state: AgentState) -> Dict[str, Any]:
+    pfz_res = await PFZAgent.execute(
+        state["target_lat"],
+        state["target_lon"],
+        state["loc_name"]
+    )
+    current_activity = list(state.get("agent_activity", []))
+    current_activity.append(pfz_res["event"])
+    return {
+        "pfz": pfz_res["pfz"],
+        "agent_activity": current_activity
+    }
+
+def gis_node(state: AgentState) -> Dict[str, Any]:
+    gis_res = GISAgent.execute(
+        state["target_lat"],
+        state["target_lon"],
+        state["loc_name"]
+    )
+    current_activity = list(state.get("agent_activity", []))
+    current_activity.append(gis_res["event"])
+    return {
+        "gis_alerts": gis_res["gis_alerts"],
+        "agent_activity": current_activity
+    }
+
+def risk_node(state: AgentState) -> Dict[str, Any]:
+    risk_res = RiskAgent.execute(
+        state["weather"],
+        state["ocean"],
+        state.get("warnings", []),
+        state["user_type"]
+    )
+    current_activity = list(state.get("agent_activity", []))
+    current_activity.append(risk_res["event"])
+    return {
+        "risk": risk_res["risk"],
+        "agent_activity": current_activity
+    }
+
+async def explanation_node(state: AgentState) -> Dict[str, Any]:
+    exp_res = await ExplanationAgent.generate_explanation(
+        user_message=state["message"],
+        user_type=state["user_type"],
+        language=state.get("language", "English"),
+        location_name=state["loc_name"],
+        risk=state["risk"],
+        weather=state["weather"],
+        ocean=state["ocean"],
+        pfz=state["pfz"],
+        warnings=state.get("warnings", []),
+        gis_alerts=state.get("gis_alerts", []),
+        conversation_history=state.get("history", [])
+    )
+    current_activity = list(state.get("agent_activity", []))
+    current_activity.append(exp_res["event"])
+    return {
+        "answer": exp_res["answer"],
+        "agent_activity": current_activity
+    }
+
+# --- Build and Compile LangGraph Workflow ---
+
+def create_orca_graph() -> Any:
+    workflow = StateGraph(AgentState)
+    
+    workflow.add_node("planner", planner_node)
+    workflow.add_node("weather_agent", weather_node)
+    workflow.add_node("ocean_agent", ocean_node)
+    workflow.add_node("pfz_agent", pfz_node)
+    workflow.add_node("gis_agent", gis_node)
+    workflow.add_node("risk_agent", risk_node)
+    workflow.add_node("explanation_agent", explanation_node)
+
+    workflow.add_edge(START, "planner")
+    workflow.add_edge("planner", "weather_agent")
+    workflow.add_edge("weather_agent", "ocean_agent")
+    workflow.add_edge("ocean_agent", "pfz_agent")
+    workflow.add_edge("pfz_agent", "gis_agent")
+    workflow.add_edge("gis_agent", "risk_agent")
+    workflow.add_edge("risk_agent", "explanation_agent")
+    workflow.add_edge("explanation_agent", END)
+
+    return workflow.compile()
+
+# Global compiled LangGraph instance for Member 1 Orchestrator
+orca_langgraph = create_orca_graph()
+
 class ORCAGraphOrchestrator:
-    """Orchestrates collaborative agents across Planner -> Data Connectors -> GIS -> Risk -> Explanation."""
+    """
+    Member 1 Lead Orchestrator:
+    Manages end-to-end execution of collaborative agents using a compiled LangGraph StateGraph.
+    Coordinates Planner -> Data Connectors (Weather, Ocean, PFZ) -> GIS -> Deterministic Risk -> Explanation.
+    """
 
     @staticmethod
     async def run(
@@ -43,60 +196,26 @@ class ORCAGraphOrchestrator:
         conversation_id: str = "session_default"
     ) -> ChatResponse:
         
-        agent_activity: List[AgentEvent] = []
         history = get_conversation_history(conversation_id, limit=6)
-
-        # 1. PLANNER AGENT
-        plan_res = PlannerAgent.plan(message, user_type, location_id, history)
-        agent_activity.append(plan_res["event"])
         
-        loc_info = plan_res["location_info"]
-        target_lat = loc_info.coordinates.latitude
-        target_lon = loc_info.coordinates.longitude
-        loc_name = loc_info.name
-        language = plan_res["language"]
+        initial_state: AgentState = {
+            "message": message,
+            "user_type": user_type,
+            "location_id": location_id,
+            "target_lat": latitude,
+            "target_lon": longitude,
+            "conversation_id": conversation_id,
+            "history": history,
+            "agent_activity": []
+        }
 
-        # 2. DATA AGENTS (Weather, Ocean, PFZ, GIS)
-        weather_res = await WeatherAgent.execute(target_lat, target_lon, loc_name)
-        agent_activity.append(weather_res["event"])
-        weather = weather_res["weather"]
-        warnings = weather_res["warnings"]
+        # Execute through compiled LangGraph
+        final_state = await orca_langgraph.ainvoke(initial_state)
 
-        ocean_res = await OceanAgent.execute(target_lat, target_lon, loc_name)
-        agent_activity.append(ocean_res["event"])
-        ocean = ocean_res["ocean"]
+        ocean = final_state["ocean"]
+        pfz = final_state["pfz"]
+        weather = final_state["weather"]
 
-        pfz_res = await PFZAgent.execute(target_lat, target_lon, loc_name)
-        agent_activity.append(pfz_res["event"])
-        pfz = pfz_res["pfz"]
-
-        gis_res = GISAgent.execute(target_lat, target_lon, loc_name)
-        agent_activity.append(gis_res["event"])
-        gis_alerts = gis_res["gis_alerts"]
-
-        # 3. RISK AGENT
-        risk_res = RiskAgent.execute(weather, ocean, warnings, user_type)
-        agent_activity.append(risk_res["event"])
-        risk = risk_res["risk"]
-
-        # 4. EXPLANATION AGENT
-        exp_res = await ExplanationAgent.generate_explanation(
-            user_message=message,
-            user_type=user_type,
-            language=language,
-            location_name=loc_name,
-            risk=risk,
-            weather=weather,
-            ocean=ocean,
-            pfz=pfz,
-            warnings=warnings,
-            gis_alerts=gis_alerts,
-            conversation_history=history
-        )
-        agent_activity.append(exp_res["event"])
-        answer = exp_res["answer"]
-
-        # Sources summary
         sources = [
             {"name": "INCOIS Ocean State Forecast", "type": "Oceanographic Telemetry", "status": ocean.data_quality, "timestamp": ocean.timestamp},
             {"name": "INCOIS Marine Fisheries Advisory", "type": "PFZ Advisory", "status": pfz.data_quality, "timestamp": pfz.advisory_date},
@@ -106,19 +225,20 @@ class ORCAGraphOrchestrator:
 
         response = ChatResponse(
             conversation_id=conversation_id,
-            answer=answer,
-            language_detected=language,
-            risk=risk,
+            answer=final_state["answer"],
+            language_detected=final_state.get("language", "English"),
+            risk=final_state["risk"],
             weather=weather,
             ocean=ocean,
             pfz=pfz,
-            warnings=warnings,
-            gis_alerts=gis_alerts,
+            warnings=final_state.get("warnings", []),
+            gis_alerts=final_state.get("gis_alerts", []),
             sources=sources,
-            agent_activity=agent_activity
+            agent_activity=final_state["agent_activity"]
         )
 
-        # Save to database session
-        save_chat_turn(conversation_id, user_type, loc_info.id, message, response.model_dump())
+        loc_info = final_state.get("location_info")
+        loc_id_to_save = loc_info.id if loc_info else location_id
+        save_chat_turn(conversation_id, user_type, loc_id_to_save, message, response.model_dump())
 
         return response

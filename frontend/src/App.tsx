@@ -74,36 +74,41 @@ export const App: React.FC = () => {
 
   const refreshMarineData = async (locId: string) => {
     try {
-      const [wData, oData, pData, warnData] = await Promise.all([
+      const [wData, oData, pData, warnData, riskData] = await Promise.all([
         api.getWeather(locId),
         api.getOcean(locId),
         api.getPFZ(locId),
-        api.getWarnings(locId)
+        api.getWarnings(locId),
+        api.getRisk(locId, userRole).catch(() => null)
       ]);
       setWeather(wData);
       setOcean(oData);
       setPfz(pData);
       setWarnings(warnData);
 
-      // Evaluate initial baseline risk
-      const waveH = oData.significant_wave_height_m || 1.3;
-      const windMs = wData.wind_speed_ms || 4.5;
-      const score = Math.min(100, Math.round(waveH * 18 + windMs * 3 + (warnData.length > 0 ? 10 : 0)));
-      const level = score > 60 ? 'HIGH' : score > 30 ? 'MODERATE' : 'LOW';
+      if (riskData) {
+        setRisk(riskData);
+      } else {
+        // Fallback baseline evaluation if offline
+        const waveH = oData.significant_wave_height_m || 1.3;
+        const windMs = wData.wind_speed_ms || 4.5;
+        const score = Math.min(100, Math.round(waveH * 18 + windMs * 3 + (warnData.length > 0 ? 10 : 0)));
+        const level = score > 60 ? 'HIGH' : score > 30 ? 'MODERATE' : 'LOW';
 
-      setRisk({
-        risk_level: level,
-        score: score,
-        reasons: [
-          `Significant Wave Height: ${waveH} m (${waveH < 1.5 ? 'Calm to moderate' : 'Elevated'})`,
-          `Surface Wind Speed: ${windMs} m/s (${wData.wind_direction_cardinal || 'SE'})`,
-          warnData.length > 0 ? warnData[0].headline : 'No severe coastal warning active'
-        ],
-        safe_for_operations: score <= 60,
-        summary: score <= 30 ? 'Favorable conditions across coastal corridors.' : 'Moderate conditions; monitor offshore swell.',
-        model_name: 'ORCA Prototype Risk Model',
-        disclaimer: 'Prototype decision-support result. Always verify official marine advisories before operating.'
-      });
+        setRisk({
+          risk_level: level,
+          score: score,
+          reasons: [
+            `Significant Wave Height: ${waveH} m (${waveH < 1.5 ? 'Calm to moderate' : 'Elevated'})`,
+            `Surface Wind Speed: ${windMs} m/s (${wData.wind_direction_cardinal || 'SE'})`,
+            warnData.length > 0 ? warnData[0].headline : 'No severe coastal warning active'
+          ],
+          safe_for_operations: score <= 60,
+          summary: score <= 30 ? 'Favorable conditions across coastal corridors.' : 'Moderate conditions; monitor offshore swell.',
+          model_name: 'ORCA Prototype Risk Model',
+          disclaimer: 'Prototype decision-support result. Always verify official marine advisories before operating.'
+        });
+      }
 
       // Populate initial greeting if messages empty
       if (messages.length === 0) {
@@ -186,6 +191,11 @@ export const App: React.FC = () => {
     handleSendMessage(prompt);
   };
 
+  const handleAskAboutPfz = (p: PFZLocation) => {
+    setActiveTab('assistant');
+    handleSendMessage(`Provide navigational safety, wave conditions, and catch recommendations for zone ${p.id} (${p.distance_km}km, bearing ${p.sector}).`);
+  };
+
   return (
     <div className="min-h-screen text-slate-800 flex flex-col antialiased">
       {/* Top Header matching screenshot */}
@@ -263,6 +273,7 @@ export const App: React.FC = () => {
               pfz={pfz}
               userRole={userRole}
               selectedPfz={selectedPfzOnMap}
+              onAskAboutPfz={handleAskAboutPfz}
             />
           )}
 

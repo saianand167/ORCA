@@ -14,6 +14,7 @@ interface MapExplorerProps {
   pfz: PFZData | null;
   userRole: UserRole;
   selectedPfz?: PFZLocation | null;
+  onAskAboutPfz?: (pfz: PFZLocation) => void;
 }
 
 export const MapExplorer: React.FC<MapExplorerProps> = ({
@@ -21,7 +22,8 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({
   selectedLocation,
   onSelectLocation,
   pfz,
-  selectedPfz
+  selectedPfz,
+  onAskAboutPfz
 }) => {
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-16 pt-2">
@@ -69,6 +71,7 @@ export const MapExplorer: React.FC<MapExplorerProps> = ({
             pfzLocations={pfz?.locations || []}
             selectedPfz={selectedPfz}
             height="560px"
+            onAskAboutPfz={onAskAboutPfz}
           />
         </div>
 

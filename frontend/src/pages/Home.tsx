@@ -278,7 +278,11 @@ export const Home: React.FC<HomeProps> = ({
             <MarineMap
               location={location}
               pfzLocations={pfz?.locations || []}
-              height="390px"
+              selectedPfz={nearestPfz}
+              height="380px"
+              onAskAboutPfz={(p) => {
+                onSelectPrompt(`Provide navigation route, wave conditions, and catch advice for ${p.id} (${p.distance_km}km, bearing ${p.sector}).`);
+              }}
             />
           </div>
 

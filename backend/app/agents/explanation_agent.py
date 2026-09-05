@@ -3,9 +3,15 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from ..core.models import AgentEvent, WeatherData, OceanData, PFZData, MarineWarning, RiskAssessment, UserType
 from ..core.config import settings
+from ..connectors.tide import TideProvider
 
 class ExplanationAgent:
-    """Explanation Agent: Generates clear, explainable, evidence-grounded marine advisory using Groq LLM or deterministic engine."""
+    """
+    Explanation Agent (Member 1 Lead):
+    Synthesizes evidence-grounded, multi-lingual, and persona-tailored marine intelligence
+    advisories using Groq Llama-3.3 LLM (with strict telemetry facts JSON prompt)
+    or the deterministic marine reasoning engine.
+    """
     
     @staticmethod
     async def generate_explanation(
@@ -22,10 +28,14 @@ class ExplanationAgent:
         conversation_history: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         
+        # Calculate current astronomical tide stage using harmonic constituent analysis
+        tide_info = TideProvider.get_tide_info(location_name)
+        
         # Build strict fact payload
         facts = {
             "location": location_name,
             "user_role": user_type,
+            "language_requested": language,
             "risk_assessment": {
                 "level": risk.risk_level,
                 "score": f"{risk.score}/100",
@@ -37,6 +47,7 @@ class ExplanationAgent:
                 "temperature": f"{weather.temperature_c}°C",
                 "wind_speed": f"{weather.wind_speed_ms} m/s ({weather.wind_speed_knots} knots)",
                 "wind_direction": f"{weather.wind_direction_cardinal} ({weather.wind_direction_deg}°)",
+                "visibility": f"{weather.visibility_km} km",
                 "source": weather.source,
                 "quality": weather.data_quality
             },
@@ -44,11 +55,18 @@ class ExplanationAgent:
                 "wave_height": f"{ocean.significant_wave_height_m} m",
                 "wave_period": f"{ocean.wave_period_s} s",
                 "swell_height": f"{ocean.swell_height_m} m",
-                "surface_current": f"{ocean.surface_current_speed_ms} m/s",
+                "surface_current": f"{ocean.surface_current_speed_ms} m/s ({ocean.surface_current_direction_deg}°)",
                 "sea_surface_temp": f"{ocean.sea_surface_temperature_c}°C",
                 "chlorophyll": f"{ocean.chlorophyll_mg_m3} mg/m³",
+                "mixed_layer_depth": f"{ocean.mixed_layer_depth_m} m",
                 "source": ocean.source,
                 "quality": ocean.data_quality
+            },
+            "astronomical_tide": {
+                "height_m": f"{tide_info.get('current_height_m', 0.85)} m",
+                "phase": tide_info.get('tidal_phase', 'Transitional'),
+                "type": tide_info.get('tide_type', 'Semi-diurnal'),
+                "model": "Harmonic Astronomical Constituents (M2, S2, K1, O1)"
             },
             "potential_fishing_zones": {
                 "available": pfz.available,
@@ -76,25 +94,28 @@ class ExplanationAgent:
                 from groq import Groq
                 client = Groq(api_key=settings.GROQ_API_KEY)
                 
+                tide_phase_str = tide_info.get('tidal_phase', 'Transitional')
+                tide_ht_str = tide_info.get('current_height_m', 0.85)
+
                 system_prompt = f"""You are ORCA (Marine Ecosystem Reasoning with Collaborative Agents), an AI marine intelligence assistant developed for ISRO & Indian coastal stakeholders.
 Role context: Assisting a '{user_type}'.
-Language: Respond in {language} (if regional language like Telugu/Hindi/Tamil is requested, provide clear guidance, otherwise English).
+Language: Respond primarily in {language} (if Telugu/Hindi/Tamil requested, write the advisory clearly in that language with English technical terms).
 
 CRITICAL CONSTRAINTS:
 1. ONLY reference the verified telemetry facts provided in JSON. NEVER fabricate weather, wave, or PFZ data.
 2. If data is missing or marked N/A, clearly say 'Data unavailable'.
 3. Always provide clear, structured bullet points covering:
-   - Marine Risk Rating & Operational Advice
-   - Prevailing Wind & Wave Conditions
-   - Potential Fishing Zones / Ocean Parameters relevant to the user
+   - Marine Risk Rating & Operational Advice (Safe/Unsafe for motorized & non-motorized craft)
+   - Prevailing Wind, Wave & Swell Conditions
+   - Potential Fishing Zones / Ocean Parameters relevant to the '{user_type}' role
+   - Astronomical Tide stage ({tide_phase_str}, {tide_ht_str}m)
    - Official Marine Warnings & Spatial Boundaries
-4. Always conclude with the mandatory disclaimer: 'Note: ORCA provides prototype decision-support based on available data. Always verify official INCOIS and IMD marine advisories before venturing out.'
+4. Conclude with: 'Note: ORCA provides prototype decision-support based on available data. Always verify official INCOIS and IMD marine advisories before venturing out.'
 """
                 chat_messages = [
                     {"role": "system", "content": system_prompt}
                 ]
                 
-                # Add up to 3 recent conversational turns
                 for h in conversation_history[-3:]:
                     chat_messages.append({"role": "user" if h["sender"] == "user" else "assistant", "content": h["message"]})
                     
@@ -107,18 +128,17 @@ CRITICAL CONSTRAINTS:
                     model="llama-3.3-70b-versatile",
                     messages=chat_messages,
                     temperature=0.2,
-                    max_tokens=650
+                    max_tokens=700
                 )
                 explanation_text = completion.choices[0].message.content
-            except Exception as e:
-                # Fallback on LLM failure
+            except Exception:
                 explanation_text = ExplanationAgent._generate_deterministic_explanation(
-                    user_message, user_type, location_name, risk, weather, ocean, pfz, warnings, gis_alerts
+                    user_message, user_type, location_name, language, risk, weather, ocean, pfz, warnings, gis_alerts, tide_info
                 )
                 llm_used = "Deterministic Reasoning Engine (Fallback)"
         else:
             explanation_text = ExplanationAgent._generate_deterministic_explanation(
-                user_message, user_type, location_name, risk, weather, ocean, pfz, warnings, gis_alerts
+                user_message, user_type, location_name, language, risk, weather, ocean, pfz, warnings, gis_alerts, tide_info
             )
             llm_used = "Deterministic Reasoning Engine"
 
@@ -126,7 +146,7 @@ CRITICAL CONSTRAINTS:
             agent="Explanation Agent",
             action=f"Synthesized evidence-based marine advisory via {llm_used}",
             status="completed",
-            details=f"Generated structured explanation with {len(risk.reasons)} risk factors and telemetry citations.",
+            details=f"Generated structured explanation in {language} for role '{user_type}' with {len(risk.reasons)} risk factors and telemetry citations.",
             timestamp=datetime.now().strftime("%H:%M:%S")
         )
 
@@ -141,40 +161,84 @@ CRITICAL CONSTRAINTS:
         user_message: str,
         user_type: UserType,
         location_name: str,
+        language: str,
         risk: RiskAssessment,
         weather: WeatherData,
         ocean: OceanData,
         pfz: PFZData,
         warnings: List[MarineWarning],
-        gis_alerts: List[Dict[str, Any]]
+        gis_alerts: List[Dict[str, Any]],
+        tide_info: Dict[str, Any]
     ) -> str:
-        status_banner = "✅ Lower-risk operating conditions" if risk.risk_level in ["LOW", "MODERATE"] else "⚠️ Elevated marine risk advisory"
+        status_banner = "Lower-risk operating conditions" if risk.risk_level in ["LOW", "MODERATE"] else "Elevated marine risk advisory"
         
-        pfz_snippet = ""
-        if pfz.available and pfz.nearest_pfz:
-            n = pfz.nearest_pfz
-            pfz_snippet = f"\n- **Nearest Fishing Zone (PFZ)**: {n.id} located **{n.distance_km} km** ({n.distance_nm} nm) bearing **{n.sector}**, depth **{n.depth_m}m** (Target species: {', '.join(n.fish_species_likely[:3])})."
-            
+        # Multi-lingual header greeting
+        greeting = ""
+        if language == "Telugu":
+            greeting = f"**నమస్కారం! {location_name} సముద్ర సమాచారం:**\n\n"
+        elif language == "Hindi":
+            greeting = f"**नमस्ते! {location_name} समुद्री मौसम और जोखिम परामर्श:**\n\n"
+        elif language == "Tamil":
+            greeting = f"**வணக்கம்! {location_name} கடல்சார் தகவல் மற்றும் எச்சரிக்கை:**\n\n"
+
+        # Persona-specific sections
+        role_advice = ""
+        if user_type == "fisherman":
+            pfz_line = "No active PFZ detected in the immediate coastal sector."
+            if pfz.available and pfz.nearest_pfz:
+                n = pfz.nearest_pfz
+                pfz_line = f"Zone **{n.id}** is located **{n.distance_km} km** ({n.distance_nm} nm) bearing **{n.sector}**, depth **{n.depth_m}m**. Likely catch: **{', '.join(n.fish_species_likely[:3])}**."
+
+            craft_safety = "Safe for small motorized boats (<10m) and mechanized trawlers." if risk.safe_for_operations else "Unsafe for traditional non-motorized and small motorized craft. Mechanized vessels should exercise extreme caution."
+
+            tide_ht = tide_info.get('current_height_m', 0.85)
+            tide_ph = tide_info.get('tidal_phase', 'Transitional')
+            tide_tp = tide_info.get('tide_type', 'Semi-diurnal')
+
+            role_advice = f"""#### Fisherfolk Operational Guidance:
+- **Potential Fishing Zone (PFZ)**: {pfz_line}
+- **Vessel Safety**: {craft_safety}
+- **Tidal Navigation**: Astronomical water level is **{tide_ht}m** ({tide_ph} / {tide_tp}). Optimal harbor departure during flood stages."""
+
+        elif user_type == "ocean_researcher":
+            tide_ht = tide_info.get('current_height_m', 0.85)
+            tide_ph = tide_info.get('tidal_phase', 'Transitional')
+            role_advice = f"""#### Oceanographic Research & Physical Telemetry:
+- **Mixed Layer Depth (MLD)**: **{ocean.mixed_layer_depth_m} m** (Derived via Thermocline Boundary Layer Model).
+- **Chlorophyll-a Proxy**: **{ocean.chlorophyll_mg_m3} mg/m³** (Surface enrichment from coastal upwelling).
+- **Water Column & Currents**: SST **{ocean.sea_surface_temperature_c}°C**, surface drift **{ocean.surface_current_speed_ms} m/s** heading {ocean.surface_current_direction_deg}°.
+- **Tide Constituent Analysis**: Astronomical water level **{tide_ht} m** ({tide_ph})."""
+
+        else:  # ship_operator
+            tide_ht = tide_info.get('current_height_m', 0.85)
+            tide_ph = tide_info.get('tidal_phase', 'Transitional')
+            role_advice = f"""#### Port & Vessel Navigation Advisory:
+- **Sea State & Fairway**: Significant wave height **{ocean.significant_wave_height_m} m**, wave period **{ocean.wave_period_s} s**, deep swell **{ocean.swell_height_m} m**.
+- **Wind Drift & Crosswinds**: **{weather.wind_speed_ms} m/s** ({weather.wind_speed_knots} kts) from **{weather.wind_direction_cardinal}** ({weather.wind_direction_deg}°).
+- **Harbor Approach**: Tidal elevation at **{tide_ht} m** ({tide_ph}). Maintain standard safety draft."""
+
         warning_snippet = ""
         if warnings:
             w_heads = [f"{w.headline} ({w.source})" for w in warnings[:2]]
-            warning_snippet = f"\n- **Active Advisories**: {'; '.join(w_heads)}"
+            warning_snippet = f"\n- **Active Official Advisories**: {'; '.join(w_heads)}"
 
         gis_snippet = ""
         if gis_alerts:
             g_heads = [f"{g['name']} ({g['distance_km']} km)" for g in gis_alerts]
-            gis_snippet = f"\n- **Geospatial Note**: Proximity to {'; '.join(g_heads)}."
+            gis_snippet = f"\n- **Geospatial Boundary Alerts**: Proximity to {'; '.join(g_heads)}."
 
-        return f"""### Marine Intelligence Report — {location_name}
+        return f"""{greeting}### Marine Intelligence Report — {location_name}
 
 **Status**: **{risk.risk_level} RISK** ({risk.score}/100) — *{status_banner}*
 
-#### Key Telemetry & Observations:
+#### Key Live Telemetry & Observations:
 - **Sea State & Waves**: Significant wave height of **{ocean.significant_wave_height_m} m** (Period: {ocean.wave_period_s}s, Swell: {ocean.swell_height_m}m).
 - **Wind Conditions**: **{weather.wind_speed_ms} m/s** ({weather.wind_speed_knots} kts) from the **{weather.wind_direction_cardinal}** ({weather.condition}).
-- **Sea Surface Temperature (SST)**: **{ocean.sea_surface_temperature_c}°C** | Surface Current: **{ocean.surface_current_speed_ms} m/s**.{pfz_snippet}{warning_snippet}{gis_snippet}
+- **Sea Surface Temperature (SST)**: **{ocean.sea_surface_temperature_c}°C** | Surface Current: **{ocean.surface_current_speed_ms} m/s**.{warning_snippet}{gis_snippet}
 
-#### Operational Recommendation:
-{risk.summary} Based on current prototype telemetry, conditions are within operational parameters for motorized vessels, but offshore swells should be monitored.
+{role_advice}
+
+#### Operational Summary:
+{risk.summary}
 
 *Disclaimer: ORCA provides prototype decision-support based on available data. Always verify official INCOIS and IMD marine advisories before venturing out.*"""
