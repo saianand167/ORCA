@@ -22,7 +22,29 @@ async def get_data_sources():
             data_quality="LIVE",
             last_updated=now_str,
             endpoint_type="REST & Live Marine Telemetry",
-            notes="Integrated with Open-Meteo Global Marine model with INCOIS baseline calibration."
+            notes="Live Open-Meteo Global Marine model (ECMWF & Copernicus Marine physics)."
+        ),
+        SourceHealth(
+            id="open_meteo_weather",
+            name="Open-Meteo Atmospheric Forecast",
+            description="Live temperature, humidity, wind speed/direction, visibility, rainfall, weather codes",
+            category="Meteorological Data",
+            status="connected",
+            data_quality="LIVE",
+            last_updated=now_str,
+            endpoint_type="REST API (FREE, No Key Required)",
+            notes="Live atmospheric data from ECMWF IFS/ICON models. No API key required."
+        ),
+        SourceHealth(
+            id="marine_advisory_engine",
+            name="Dynamic Marine Advisory Engine",
+            description="Marine advisory dynamically generated from live weather/ocean telemetry using defined warning thresholds",
+            category="Meteorological & Ocean Warnings",
+            status="connected",
+            data_quality="LIVE",
+            last_updated=now_str,
+            endpoint_type="Live Telemetry Threshold Evaluator",
+            notes="Evaluates live wind, wave, and visibility telemetry in real time against defined maritime safety thresholds."
         ),
         SourceHealth(
             id="incois_pfz",
@@ -33,18 +55,18 @@ async def get_data_sources():
             data_quality="DEMO SNAPSHOT",
             last_updated="24 Aug 2026",
             endpoint_type="INCOIS WebGIS / Advisory Bulletin",
-            notes="Official advisory snapshot with active spatial bearing calculations."
+            notes="Official advisory snapshot with live spatial bearing calculations from user GPS."
         ),
         SourceHealth(
-            id="imd_marine",
-            name="India Meteorological Department (IMD)",
-            description="Coastal weather bulletins, squall warnings, fishermen advisories, cyclone tracking",
-            category="Meteorological Forecasts",
-            status="connected" if settings.IMD_API_KEY else "fallback",
+            id="tide_harmonic",
+            name="Astronomical Tide Prediction",
+            description="Harmonic constituent model (M2+S2+K1+O1) for Indian port tide predictions",
+            category="Tidal Data",
+            status="connected",
             data_quality="LIVE",
             last_updated=now_str,
-            endpoint_type="IMD API / Open-Meteo Gateway",
-            notes="Live atmospheric parameters synced with IMD coastal warning bulletins."
+            endpoint_type="Mathematical Harmonic Model",
+            notes="Astronomical tide computed from INCOIS-calibrated harmonic constituents. No API key required."
         ),
         SourceHealth(
             id="mosdac_isro",

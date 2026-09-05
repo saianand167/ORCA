@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, Any, List
 from ..core.models import AgentEvent
-from ..core.location import haversine_distance_km
+from ..core.location import haversine_distance_km, is_point_in_polygon
 
 # Known Marine Protected Areas & Geofences along Indian Coastline
 RESTRICTED_ZONES = [
@@ -53,6 +53,25 @@ class GISAgent:
                     "regulation": zone["regulation"],
                     "alert_level": "WARNING" if dist <= zone["radius_km"] else "ADVISORY"
                 })
+
+        # Evaluate offshore deep-sea sector polygon
+        deepsea_poly = [
+            [lon + 0.35, lat - 0.15],
+            [lon + 0.85, lat - 0.35],
+            [lon + 0.95, lat + 0.45],
+            [lon + 0.45, lat + 0.25],
+            [lon + 0.35, lat - 0.15]
+        ]
+        if is_point_in_polygon(lat, lon, deepsea_poly):
+            gis_alerts.append({
+                "zone_id": "RISK-ZONE-DEEPSEA",
+                "name": f"{location_name} Offshore Deep-Sea Sector",
+                "type": "Maritime Operation Corridor",
+                "distance_km": 0.0,
+                "within_boundary": True,
+                "regulation": "Deep-water navigation zone; monitor swell spectrum and surface currents.",
+                "alert_level": "ADVISORY"
+            })
                 
         event = AgentEvent(
             agent="GIS Agent",

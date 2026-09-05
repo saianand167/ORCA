@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 UserType = Literal["fisherman", "ocean_researcher", "ship_operator"]
 RiskLevel = Literal["LOW", "MODERATE", "HIGH", "VERY HIGH"]
-DataQuality = Literal["LIVE", "CACHED", "DEMO SNAPSHOT"]
+DataQuality = Literal["LIVE", "CACHED", "DERIVED", "UNAVAILABLE", "DEMO SNAPSHOT"]
 
 class Coordinates(BaseModel):
     latitude: float
@@ -33,6 +33,7 @@ class WeatherData(BaseModel):
     source: str = "Open-Meteo / IMD"
     data_quality: DataQuality = "LIVE"
     timestamp: str = ""
+    cache_age_seconds: Optional[int] = None
 
 class OceanData(BaseModel):
     location: str
@@ -47,10 +48,13 @@ class OceanData(BaseModel):
     sea_surface_temperature_c: float = 0.0
     mixed_layer_depth_m: Optional[float] = None
     chlorophyll_mg_m3: Optional[float] = None
+    chlorophyll_provenance: Optional[str] = "DERIVED (Empirical SST-Upwelling Proxy Model)"
+    mld_provenance: Optional[str] = "DERIVED (Thermocline Boundary Layer Model)"
     forecast_hourly: List[Dict[str, Any]] = Field(default_factory=list)
     source: str = "INCOIS Ocean State Forecast / Marine Telemetry"
     data_quality: DataQuality = "LIVE"
     timestamp: str = ""
+    cache_age_seconds: Optional[int] = None
 
 class PFZLocation(BaseModel):
     id: str
@@ -91,14 +95,32 @@ class MarineWarning(BaseModel):
     valid_until: str = ""
     source: str = "IMD / INCOIS"
 
+class RiskFactors(BaseModel):
+    wave_score: float = 0.0
+    wave_weight: float = 0.35
+    wind_score: float = 0.0
+    wind_weight: float = 0.30
+    warning_score: float = 0.0
+    warning_weight: float = 0.25
+    current_score: float = 0.0
+    current_weight: float = 0.10
+
 class RiskAssessment(BaseModel):
     risk_level: RiskLevel = "LOW"
     score: int = 15
     reasons: List[str] = Field(default_factory=list)
     safe_for_operations: bool = True
     summary: str = ""
+    factor_breakdown: Optional[RiskFactors] = None
     model_name: str = "ORCA Prototype Risk Model"
     disclaimer: str = "Prototype decision-support result. Always verify official marine advisories before operating."
+
+class RiskEvaluateRequest(BaseModel):
+    wave_height_m: Optional[float] = 1.2
+    wind_speed_ms: Optional[float] = 4.0
+    current_speed_ms: Optional[float] = 0.3
+    warning_severity: Optional[str] = "NONE"  # NONE, LOW, MODERATE, HIGH, VERY HIGH
+    user_type: UserType = "fisherman"
 
 class AgentEvent(BaseModel):
     agent: str

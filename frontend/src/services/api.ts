@@ -5,7 +5,8 @@ import {
   PFZData,
   MarineWarning,
   SourceHealth,
-  UserRole
+  UserRole,
+  RiskAssessment
 } from '../types';
 
 const API_BASE = 'http://localhost:8000/api';
@@ -102,6 +103,28 @@ export const api = {
   async getSystemStatus(): Promise<any> {
     const res = await fetch(`${API_BASE}/system-status`);
     if (!res.ok) throw new Error('System status API error');
+    return await res.json();
+  },
+
+  async getRisk(locationId: string, userRole: UserRole = 'fisherman'): Promise<RiskAssessment> {
+    const res = await fetch(`${API_BASE}/risk?location=${encodeURIComponent(locationId)}&user_type=${userRole}`);
+    if (!res.ok) throw new Error('Risk API error');
+    return await res.json();
+  },
+
+  async evaluateCustomRisk(payload: {
+    wave_height_m?: number;
+    wind_speed_ms?: number;
+    current_speed_ms?: number;
+    warning_severity?: string;
+    user_type?: UserRole;
+  }): Promise<RiskAssessment> {
+    const res = await fetch(`${API_BASE}/risk/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Risk simulation error');
     return await res.json();
   },
 

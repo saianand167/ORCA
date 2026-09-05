@@ -80,6 +80,22 @@ def get_cached_data(cache_key: str, max_age_seconds: int = 900) -> Optional[Dict
                 return None
     return None
 
+def get_any_cached_data(cache_key: str) -> Optional[tuple[Dict[str, Any], int]]:
+    """Returns (cached_data, age_in_seconds) regardless of max age, or None if not found."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT data_json, data_quality, updated_at FROM data_cache WHERE cache_key = ?", (cache_key,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        try:
+            data = json.loads(row["data_json"])
+            age = int(time.time() - row["updated_at"])
+            return data, age
+        except Exception:
+            return None
+    return None
+
 def set_cached_data(cache_key: str, data: Dict[str, Any], quality: str = "CACHED"):
     conn = get_db_connection()
     cursor = conn.cursor()

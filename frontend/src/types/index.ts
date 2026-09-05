@@ -1,6 +1,6 @@
 export type UserRole = 'fisherman' | 'ocean_researcher' | 'ship_operator';
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'VERY HIGH';
-export type DataQuality = 'LIVE' | 'CACHED' | 'DEMO SNAPSHOT';
+export type DataQuality = 'LIVE' | 'CACHED' | 'DERIVED' | 'UNAVAILABLE' | 'DEMO SNAPSHOT';
 
 export interface LocationInfo {
   id: string;
@@ -106,12 +106,24 @@ export interface MarineWarning {
   source: string;
 }
 
+export interface RiskFactors {
+  wave_score: number;
+  wave_weight: number;
+  wind_score: number;
+  wind_weight: number;
+  warning_score: number;
+  warning_weight: number;
+  current_score: number;
+  current_weight: number;
+}
+
 export interface RiskAssessment {
   risk_level: RiskLevel;
   score: number;
   reasons: string[];
   safe_for_operations: boolean;
   summary: string;
+  factor_breakdown?: RiskFactors;
   model_name: string;
   disclaimer: string;
 }

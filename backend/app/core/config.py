@@ -20,7 +20,6 @@ class Settings(BaseModel):
     # Environment credentials
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", os.getenv("groq_api_key", ""))
     IMD_API_KEY: str = os.getenv("IMD_API_KEY", "")
-    WEATHER_API_KEY: str = os.getenv("WEATHER_API_KEY", "")
     MOSDAC_USERNAME: str = os.getenv("MOSDAC_USERNAME", "")
     MOSDAC_PASSWORD: str = os.getenv("MOSDAC_PASSWORD", "")
     

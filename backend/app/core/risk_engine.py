@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Optional
 import yaml
-from .models import WeatherData, OceanData, MarineWarning, RiskAssessment, RiskLevel, UserType
+from .models import WeatherData, OceanData, MarineWarning, RiskAssessment, RiskLevel, UserType, RiskFactors
 
 def load_risk_config():
     config_path = Path(__file__).resolve().parent.parent / "config" / "risk_thresholds.yaml"
@@ -126,12 +126,62 @@ def evaluate_marine_risk(
         safe_for_ops = False
         summary = "Hazardous severe marine state; avoid operations."
 
+    # Populate factor breakdown
+    wave_w = weights.get("wave_weight", 0.35)
+    wind_w = weights.get("wind_weight", 0.30)
+    warn_w = weights.get("warning_weight", 0.25)
+    curr_w = weights.get("current_weight", 0.10)
+
+    breakdown = RiskFactors(
+        wave_score=round(wave_score, 1),
+        wave_weight=wave_w,
+        wind_score=round(wind_score, 1),
+        wind_weight=wind_w,
+        warning_score=round(warning_score, 1),
+        warning_weight=warn_w,
+        current_score=round(current_score, 1),
+        current_weight=curr_w
+    )
+
     return RiskAssessment(
         risk_level=risk_level,
         score=final_score,
         reasons=reasons,
         safe_for_operations=safe_for_ops,
         summary=summary,
+        factor_breakdown=breakdown,
         model_name="ORCA Prototype Risk Model v1.0",
         disclaimer="Prototype decision-support result. Always verify official marine advisories before operating."
     )
+
+def evaluate_risk_from_values(
+    wave_height_m: float = 1.2,
+    wind_speed_ms: float = 4.0,
+    current_speed_ms: float = 0.3,
+    warning_severity: str = "NONE",
+    user_type: UserType = "fisherman"
+) -> RiskAssessment:
+    """Directly evaluates risk given sensor/numeric parameters without requiring full Pydantic models."""
+    mock_weather = WeatherData(
+        location="Custom",
+        wind_speed_ms=wind_speed_ms,
+        data_quality="LIVE"
+    )
+    mock_ocean = OceanData(
+        location="Custom",
+        significant_wave_height_m=wave_height_m,
+        surface_current_speed_ms=current_speed_ms,
+        data_quality="LIVE"
+    )
+    mock_warnings = []
+    if warning_severity.upper() in ["LOW", "MODERATE", "HIGH", "VERY HIGH"]:
+        mock_warnings.append(MarineWarning(
+            id="PARAM-WARN-01",
+            category="Operational Safety Advisory",
+            severity=warning_severity.upper(),  # type: ignore
+            headline=f"{warning_severity.upper()} Marine Advisory in effect",
+            description="Evaluated from direct request parameters",
+            source="Parametric Risk Simulator"
+        ))
+        
+    return evaluate_marine_risk(mock_weather, mock_ocean, mock_warnings, user_type)

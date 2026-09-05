@@ -10,6 +10,7 @@ from .api.pfz import router as pfz_router
 from .api.warnings import router as warnings_router
 from .api.map import router as map_router
 from .api.sources import router as sources_router
+from .api.risk import router as risk_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -54,6 +55,7 @@ app.include_router(pfz_router, prefix=settings.API_V1_PREFIX)
 app.include_router(warnings_router, prefix=settings.API_V1_PREFIX)
 app.include_router(map_router, prefix=settings.API_V1_PREFIX)
 app.include_router(sources_router, prefix=settings.API_V1_PREFIX)
+app.include_router(risk_router, prefix=settings.API_V1_PREFIX)
 
 if __name__ == "__main__":
     import uvicorn
