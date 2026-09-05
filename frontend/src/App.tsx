@@ -36,6 +36,7 @@ export const App: React.FC = () => {
   });
   const [userRole, setUserRole] = useState<UserRole>('fisherman');
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
 
   // Marine Data State
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -60,7 +61,7 @@ export const App: React.FC = () => {
         setLocations(locs);
         const initialLoc = locs.find((l) => l.is_primary) || locs[0] || selectedLocation;
         setSelectedLocation(initialLoc);
-        await refreshMarineData(initialLoc.id);
+        await refreshMarineData(initialLoc.id, false);
         const srcs = await api.getSources();
         setSources(srcs);
         const sys = await api.getSystemStatus();
@@ -72,14 +73,14 @@ export const App: React.FC = () => {
     loadData();
   }, []);
 
-  const refreshMarineData = async (locId: string) => {
+  const refreshMarineData = async (locId: string, demo: boolean = isDemoMode) => {
     try {
       const [wData, oData, pData, warnData, riskData] = await Promise.all([
-        api.getWeather(locId),
-        api.getOcean(locId),
+        api.getWeather(locId, demo),
+        api.getOcean(locId, demo),
         api.getPFZ(locId),
-        api.getWarnings(locId),
-        api.getRisk(locId, userRole).catch(() => null)
+        api.getWarnings(locId, demo),
+        api.getRisk(locId, userRole, demo).catch(() => null)
       ]);
       setWeather(wData);
       setOcean(oData);
@@ -129,9 +130,14 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleToggleDemoMode = async (val: boolean) => {
+    setIsDemoMode(val);
+    await refreshMarineData(selectedLocation.id, val);
+  };
+
   const handleSelectLocation = async (loc: LocationInfo) => {
     setSelectedLocation(loc);
-    await refreshMarineData(loc.id);
+    await refreshMarineData(loc.id, isDemoMode);
   };
 
   const handleSendMessage = async (text: string) => {
@@ -152,7 +158,8 @@ export const App: React.FC = () => {
         latitude: selectedLocation.coordinates.latitude,
         longitude: selectedLocation.coordinates.longitude,
         user_type: userRole,
-        conversation_id: conversationId
+        conversation_id: conversationId,
+        demo_mode: isDemoMode
       });
 
       const orcaMsg: ChatMessage = {
@@ -198,17 +205,37 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen text-slate-800 flex flex-col antialiased">
-      {/* Top Header matching screenshot */}
+      {/* Top Header */}
       <Header
         locations={locations}
         selectedLocation={selectedLocation}
         onSelectLocation={handleSelectLocation}
         userRole={userRole}
         onChangeUserRole={setUserRole}
-        dataQuality={weather?.data_quality || 'LIVE'}
+        dataQuality={weather?.data_quality || (isDemoMode ? 'DEMO / SIMULATED' : 'LIVE')}
         activeTab={activeTab}
         onChangeTab={setActiveTab}
+        isDemoMode={isDemoMode}
+        onToggleDemoMode={handleToggleDemoMode}
       />
+
+      {/* Demo Simulation Alert Banner */}
+      {isDemoMode && (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-red-600 text-white font-medium px-4 py-2.5 text-center text-xs sm:text-sm flex flex-wrap items-center justify-center gap-2 shadow-md">
+          <span className="font-extrabold uppercase px-2 py-0.5 bg-black/25 text-amber-100 rounded text-[11px] tracking-wider border border-white/20">
+            Demo / Simulation Mode Active
+          </span>
+          <span className="text-white/95">
+            Simulating severe cyclonic squall conditions (18.5 m/s winds, 4.2m swells, Red Warning). All telemetry is synthetic for ISRO SIH jury demonstration.
+          </span>
+          <button
+            onClick={() => handleToggleDemoMode(false)}
+            className="ml-2 px-2.5 py-0.5 rounded bg-white text-slate-900 font-bold hover:bg-slate-100 transition shadow-xs text-xs cursor-pointer"
+          >
+            Switch to Live Telemetry
+          </button>
+        </div>
+      )}
 
       {/* Main App Content Area */}
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">

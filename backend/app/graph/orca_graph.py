@@ -29,6 +29,7 @@ class AgentState(TypedDict, total=False):
     required_agents: List[str]
     plan_summary: str
     history: List[Dict[str, Any]]
+    demo_mode: bool
     weather: WeatherData
     ocean: OceanData
     pfz: PFZData
@@ -65,6 +66,27 @@ def planner_node(state: AgentState) -> Dict[str, Any]:
     }
 
 async def weather_node(state: AgentState) -> Dict[str, Any]:
+    if state.get("demo_mode"):
+        from datetime import datetime
+        from ..api.weather import get_weather
+        from ..api.warnings import get_warnings
+        loc_id = state.get("location_id", "visakhapatnam")
+        weather = await get_weather(loc_id, demo_mode=True)
+        warnings = await get_warnings(loc_id, demo_mode=True)
+        current_activity = list(state.get("agent_activity", []))
+        current_activity.append(AgentEvent(
+            agent="Weather Agent",
+            action="Loaded simulated severe cyclonic squall telemetry",
+            status="completed",
+            details="DEMO SIMULATION: Wind 18.5 m/s (36 kts), Rain 48.5mm, Active Red Alert [DEMO / SIMULATED]",
+            timestamp=datetime.now().strftime("%H:%M:%S")
+        ))
+        return {
+            "weather": weather,
+            "warnings": warnings,
+            "agent_activity": current_activity
+        }
+
     weather_res = await WeatherAgent.execute(
         state["target_lat"],
         state["target_lon"],
@@ -79,6 +101,24 @@ async def weather_node(state: AgentState) -> Dict[str, Any]:
     }
 
 async def ocean_node(state: AgentState) -> Dict[str, Any]:
+    if state.get("demo_mode"):
+        from datetime import datetime
+        from ..api.ocean import get_ocean_conditions
+        loc_id = state.get("location_id", "visakhapatnam")
+        ocean = await get_ocean_conditions(loc_id, demo_mode=True)
+        current_activity = list(state.get("agent_activity", []))
+        current_activity.append(AgentEvent(
+            agent="Ocean Agent",
+            action="Loaded simulated extreme sea state conditions",
+            status="completed",
+            details="DEMO SIMULATION: Waves 4.2m, Swell 3.5m, Current 2.2 m/s [DEMO / SIMULATED]",
+            timestamp=datetime.now().strftime("%H:%M:%S")
+        ))
+        return {
+            "ocean": ocean,
+            "agent_activity": current_activity
+        }
+
     ocean_res = await OceanAgent.execute(
         state["target_lat"],
         state["target_lon"],
@@ -193,7 +233,8 @@ class ORCAGraphOrchestrator:
         location_id: str = "visakhapatnam",
         latitude: float = 17.6868,
         longitude: float = 83.2185,
-        conversation_id: str = "session_default"
+        conversation_id: str = "session_default",
+        demo_mode: bool = False
     ) -> ChatResponse:
         
         history = get_conversation_history(conversation_id, limit=6)
@@ -206,6 +247,7 @@ class ORCAGraphOrchestrator:
             "target_lon": longitude,
             "conversation_id": conversation_id,
             "history": history,
+            "demo_mode": demo_mode,
             "agent_activity": []
         }
 

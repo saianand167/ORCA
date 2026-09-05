@@ -14,5 +14,6 @@ async def chat_with_orca(request: ChatRequest):
         location_id=request.location_id or "visakhapatnam",
         latitude=request.latitude or 17.6868,
         longitude=request.longitude or 83.2185,
-        conversation_id=conversation_id
+        conversation_id=conversation_id,
+        demo_mode=request.demo_mode
     )

@@ -1,6 +1,6 @@
 export type UserRole = 'fisherman' | 'ocean_researcher' | 'ship_operator';
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'VERY HIGH';
-export type DataQuality = 'LIVE' | 'CACHED' | 'DERIVED' | 'UNAVAILABLE' | 'DEMO SNAPSHOT';
+export type DataQuality = 'LIVE' | 'CACHED' | 'DERIVED' | 'UNAVAILABLE' | 'DEMO SNAPSHOT' | 'DEMO / SIMULATED' | 'CONNECTOR READY — AUTH REQUIRED';
 
 export interface LocationInfo {
   id: string;

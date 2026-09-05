@@ -14,15 +14,30 @@ async def get_location_risk(
     location: str = Query("visakhapatnam", description="Location identifier or name"),
     user_type: UserType = Query("fisherman", description="User operational role"),
     lat: Optional[float] = Query(None, description="Optional custom latitude"),
-    lon: Optional[float] = Query(None, description="Optional custom longitude")
+    lon: Optional[float] = Query(None, description="Optional custom longitude"),
+    demo_mode: bool = Query(False, description="Toggle simulated extreme condition for jury demonstration")
 ):
     """
     Evaluates real-time deterministic marine risk by fetching live telemetry 
     (Wave, Wind, Currents, and Active Warnings) for the specified location or coordinates.
     """
+    valid_lat = lat if isinstance(lat, (int, float)) else None
+    valid_lon = lon if isinstance(lon, (int, float)) else None
+    is_demo = bool(demo_mode) if isinstance(demo_mode, bool) else False
+    role: UserType = user_type if isinstance(user_type, str) else "fisherman"
+
+    if is_demo:
+        return evaluate_risk_from_values(
+            wave_height_m=4.2,
+            wind_speed_ms=18.5,
+            current_speed_ms=2.2,
+            warning_severity="VERY HIGH",
+            user_type=role
+        )
+
     loc_info = get_location(location)
-    target_lat = lat if lat is not None else loc_info.coordinates.latitude
-    target_lon = lon if lon is not None else loc_info.coordinates.longitude
+    target_lat = valid_lat if valid_lat is not None else loc_info.coordinates.latitude
+    target_lon = valid_lon if valid_lon is not None else loc_info.coordinates.longitude
     loc_name = loc_info.name
 
     # Fetch live telemetry concurrently

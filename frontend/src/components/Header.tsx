@@ -24,6 +24,8 @@ interface HeaderProps {
   dataQuality?: DataQuality;
   activeTab: TabType;
   onChangeTab: (tab: TabType) => void;
+  isDemoMode?: boolean;
+  onToggleDemoMode?: (val: boolean) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,7 +36,9 @@ export const Header: React.FC<HeaderProps> = ({
   onChangeUserRole,
   dataQuality = 'LIVE',
   activeTab,
-  onChangeTab
+  onChangeTab,
+  isDemoMode = false,
+  onToggleDemoMode
 }) => {
   const tabs = [
     { id: 'home' as TabType, label: 'Overview', icon: LayoutDashboard },
@@ -151,11 +155,27 @@ export const Header: React.FC<HeaderProps> = ({
             })}
           </div>
 
-          {/* Telemetry Status Badge */}
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-bold shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="hidden sm:inline">{dataQuality}</span>
-          </div>
+          {/* Mode Switcher: Live vs Demo Squall Simulation */}
+          {onToggleDemoMode ? (
+            <button
+              onClick={() => onToggleDemoMode(!isDemoMode)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer ${
+                isDemoMode
+                  ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
+                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80 hover:bg-emerald-100'
+              }`}
+              title={isDemoMode ? 'Click to switch to Live Telemetry' : 'Click to simulate severe cyclonic squall condition'}
+            >
+              <span className={`w-2 h-2 rounded-full ${isDemoMode ? 'bg-amber-500 animate-ping' : 'bg-emerald-500 animate-pulse'}`} />
+              <span className="hidden sm:inline">{isDemoMode ? 'DEMO SIMULATION' : 'LIVE TELEMETRY'}</span>
+              <span className="sm:hidden">{isDemoMode ? 'DEMO' : 'LIVE'}</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-bold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="hidden sm:inline">{dataQuality}</span>
+            </div>
+          )}
         </div>
       </div>
 

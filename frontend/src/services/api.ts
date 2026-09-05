@@ -64,14 +64,14 @@ export const api = {
     }
   },
 
-  async getWeather(locationId: string): Promise<WeatherData> {
-    const res = await fetch(`${API_BASE}/weather?location=${encodeURIComponent(locationId)}`);
+  async getWeather(locationId: string, demoMode: boolean = false): Promise<WeatherData> {
+    const res = await fetch(`${API_BASE}/weather?location=${encodeURIComponent(locationId)}&demo_mode=${demoMode}`);
     if (!res.ok) throw new Error('Weather API error');
     return await res.json();
   },
 
-  async getOcean(locationId: string): Promise<OceanData> {
-    const res = await fetch(`${API_BASE}/ocean?location=${encodeURIComponent(locationId)}`);
+  async getOcean(locationId: string, demoMode: boolean = false): Promise<OceanData> {
+    const res = await fetch(`${API_BASE}/ocean?location=${encodeURIComponent(locationId)}&demo_mode=${demoMode}`);
     if (!res.ok) throw new Error('Ocean API error');
     return await res.json();
   },
@@ -82,8 +82,8 @@ export const api = {
     return await res.json();
   },
 
-  async getWarnings(locationId: string): Promise<MarineWarning[]> {
-    const res = await fetch(`${API_BASE}/warnings?location=${encodeURIComponent(locationId)}`);
+  async getWarnings(locationId: string, demoMode: boolean = false): Promise<MarineWarning[]> {
+    const res = await fetch(`${API_BASE}/warnings?location=${encodeURIComponent(locationId)}&demo_mode=${demoMode}`);
     if (!res.ok) throw new Error('Warnings API error');
     return await res.json();
   },
@@ -106,8 +106,8 @@ export const api = {
     return await res.json();
   },
 
-  async getRisk(locationId: string, userRole: UserRole = 'fisherman'): Promise<RiskAssessment> {
-    const res = await fetch(`${API_BASE}/risk?location=${encodeURIComponent(locationId)}&user_type=${userRole}`);
+  async getRisk(locationId: string, userRole: UserRole = 'fisherman', demoMode: boolean = false): Promise<RiskAssessment> {
+    const res = await fetch(`${API_BASE}/risk?location=${encodeURIComponent(locationId)}&user_type=${userRole}&demo_mode=${demoMode}`);
     if (!res.ok) throw new Error('Risk API error');
     return await res.json();
   },
@@ -135,6 +135,7 @@ export const api = {
     longitude?: number;
     user_type: UserRole;
     conversation_id?: string;
+    demo_mode?: boolean;
   }): Promise<any> {
     const res = await fetch(`${API_BASE}/chat`, {
       method: 'POST',

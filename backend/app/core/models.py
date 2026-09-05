@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 UserType = Literal["fisherman", "ocean_researcher", "ship_operator"]
 RiskLevel = Literal["LOW", "MODERATE", "HIGH", "VERY HIGH"]
-DataQuality = Literal["LIVE", "CACHED", "DERIVED", "UNAVAILABLE", "DEMO SNAPSHOT"]
+DataQuality = Literal["LIVE", "CACHED", "DERIVED", "UNAVAILABLE", "DEMO SNAPSHOT", "DEMO / SIMULATED", "CONNECTOR READY — AUTH REQUIRED"]
 
 class Coordinates(BaseModel):
     latitude: float
@@ -136,6 +136,7 @@ class ChatRequest(BaseModel):
     longitude: Optional[float] = 83.2185
     user_type: UserType = "fisherman"
     conversation_id: Optional[str] = None
+    demo_mode: bool = False
 
 class ChatResponse(BaseModel):
     conversation_id: str
