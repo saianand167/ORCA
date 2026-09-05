@@ -97,20 +97,15 @@ class ExplanationAgent:
                 tide_phase_str = tide_info.get('tidal_phase', 'Transitional')
                 tide_ht_str = tide_info.get('current_height_m', 0.85)
 
-                system_prompt = f"""You are ORCA (Marine Ecosystem Reasoning with Collaborative Agents), an AI marine intelligence assistant developed for ISRO & Indian coastal stakeholders.
-Role context: Assisting a '{user_type}'.
-Language: Respond primarily in {language} (if Telugu/Hindi/Tamil requested, write the advisory clearly in that language with English technical terms).
+                system_prompt = f"""You are ORCA (Marine Ecosystem Reasoning with Collaborative Agents), an advanced Agentic AI Marine Intelligence Platform developed for ISRO & Indian coastal stakeholders.
+User Operational Role: {user_type} (tailor your operational recommendations for this specific role, e.g. artisanal fishermen, ocean researchers, or ship operators).
+Language: Respond naturally in {language} (if Telugu/Hindi/Tamil requested, write the advisory clearly in that language with technical terms).
 
-CRITICAL CONSTRAINTS:
-1. ONLY reference the verified telemetry facts provided in JSON. NEVER fabricate weather, wave, or PFZ data.
-2. If data is missing or marked N/A, clearly say 'Data unavailable'.
-3. Always provide clear, structured bullet points covering:
-   - Marine Risk Rating & Operational Advice (Safe/Unsafe for motorized & non-motorized craft)
-   - Prevailing Wind, Wave & Swell Conditions
-   - Potential Fishing Zones / Ocean Parameters relevant to the '{user_type}' role
-   - Astronomical Tide stage ({tide_phase_str}, {tide_ht_str}m)
-   - Official Marine Warnings & Spatial Boundaries
-4. Conclude with: 'Note: ORCA provides prototype decision-support based on available data. Always verify official INCOIS and IMD marine advisories before venturing out.'
+CORE INSTRUCTIONS:
+1. DYNAMIC REASONING: Read the user's specific query carefully and address it directly. Do NOT output a static, rigid template or predefined repetitive bullet blocks unless asked.
+2. GROUNDED IN REAL-TIME FACTS: You are provided with real-time verified ground-truth marine telemetry facts (wind speed, wave height, swell, currents, sea surface temperature, tide stage, PFZ coordinates, risk score, official warnings). You MUST cite and explain these real-time values accurately to justify your recommendations.
+3. OPERATIONAL ADVICE: Provide clear, practical safety guidance appropriate for the user's vessel/role.
+4. SAFETY DISCLAIMER: Conclude with a brief standard safety sentence: 'Always verify official INCOIS and IMD bulletins before sailing.'
 """
                 chat_messages = [
                     {"role": "system", "content": system_prompt}
@@ -121,16 +116,16 @@ CRITICAL CONSTRAINTS:
                     
                 chat_messages.append({
                     "role": "user",
-                    "content": f"User question: '{user_message}'\n\nVerified Ground Truth Telemetry Facts:\n{json.dumps(facts, indent=2)}"
+                    "content": f"User question: '{user_message}'\n\nVerified Ground Truth Telemetry Facts for {location_name}:\n{json.dumps(facts, indent=2)}\n\nPlease provide a clear, conversational, and direct answer based on these real-time verified facts:"
                 })
 
                 candidate_models = [
-                    "groq/compound-mini",
                     "qwen/qwen3.8-27b",
-                    "groq/compound",
                     "openai/gpt-oss-120b",
-                    "llama-3.3-70b-versatile",
-                    "llama-3.1-8b-instant"
+                    "groq/compound",
+                    "groq/compound-mini",
+                    "openai/gpt-oss-20b",
+                    "llama-3.3-70b-versatile"
                 ]
                 completion = None
                 chosen_model = None
@@ -139,17 +134,19 @@ CRITICAL CONSTRAINTS:
                         completion = client.chat.completions.create(
                             model=candidate,
                             messages=chat_messages,
-                            temperature=0.2,
-                            max_tokens=700
+                            temperature=0.4,
+                            max_tokens=650
                         )
                         chosen_model = candidate
                         break
-                    except Exception:
+                    except Exception as err:
+                        print(f"[ORCA Groq Warning] Model {candidate} failed: {err}")
                         continue
 
                 if completion and completion.choices:
                     explanation_text = completion.choices[0].message.content
                     llm_used = f"Groq ({chosen_model})"
+                    print(f"[ORCA Groq Success] Answer generated via Groq ({chosen_model}) for query: '{user_message[:40]}'")
                 else:
                     explanation_text = ExplanationAgent._generate_deterministic_explanation(
                         user_message, user_type, location_name, language, risk, weather, ocean, pfz, warnings, gis_alerts, tide_info
