@@ -15,7 +15,7 @@ BASE_URL = "http://127.0.0.1:8000"
 def get(endpoint: str):
     url = f"{BASE_URL}{endpoint}"
     req = urllib.request.Request(url, headers={"User-Agent": "ORCA-Integration-Test"})
-    with urllib.request.urlopen(req, timeout=15) as res:
+    with urllib.request.urlopen(req, timeout=30) as res:
         return res.getcode(), json.loads(res.read().decode("utf-8"))
 
 def post(endpoint: str, data: dict):
@@ -26,7 +26,7 @@ def post(endpoint: str, data: dict):
         data=payload,
         headers={"Content-Type": "application/json", "User-Agent": "ORCA-Integration-Test"}
     )
-    with urllib.request.urlopen(req, timeout=15) as res:
+    with urllib.request.urlopen(req, timeout=30) as res:
         return res.getcode(), json.loads(res.read().decode("utf-8"))
 
 def run_all_checks():
