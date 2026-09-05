@@ -3,14 +3,15 @@ from pathlib import Path
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# Load .env or root sai.env if exists
+# Load .env from backend/ or root repo
 env_paths = [
     Path(__file__).resolve().parent.parent.parent / ".env",
+    Path(__file__).resolve().parent.parent.parent.parent / ".env",
     Path(__file__).resolve().parent.parent.parent.parent / "sai.env"
 ]
 for p in env_paths:
     if p.exists():
-        load_dotenv(p)
+        load_dotenv(p, override=True)
 
 class Settings(BaseModel):
     PROJECT_NAME: str = "ORCA - Marine Ecosystem Reasoning with Collaborative Agents"
